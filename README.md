@@ -48,6 +48,8 @@ A specific Swift version can be set using the `swift-version` input:
   run: swift --version # Swift 5.1.0
 ```
 
+Release selectors can specify a major version (`"6"`), a minor version (`"6.3"`), or an exact patch version (`"6.3.3"`). Partial selectors accept any installed release in that major or minor series; for example, `"6.3"` accepts `6.3.3` but not `6.4`. If installation is needed, Swiftly resolves a partial selector to the latest matching release. `"latest"` always goes through Swiftly to resolve the latest stable release.
+
 Also works with snapshots:
 
 ```yaml
@@ -55,6 +57,10 @@ Also works with snapshots:
   with:
     swift-version: "main-snapshot"
 ```
+
+Snapshots can also target a release branch (`"6.3-snapshot"`). Adding a `-YYYY-MM-DD` suffix to either snapshot selector pins the snapshot date.
+
+The `version` output reports the installed release version, not the requested selector. For snapshots, it reports Swiftly's resolved, dated toolchain identifier. The action fails if the installed toolchain does not match the requested selector.
 
 Works perfect together with matrixes:
 

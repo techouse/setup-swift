@@ -11,7 +11,7 @@ inputs:
     default: false
 outputs:
   version:
-    description: The full Swift version that was configured
+    description: The installed Swift release version or resolved dated snapshot identifier
 runs:
   using: node24
   main: dist/index.js
