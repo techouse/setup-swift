@@ -391,6 +391,7 @@ async function download({ skipVerifySignature = false } = {}) {
         (0, core_1.info)("Skipping signature verification");
     }
     else {
+        await (0, gpg_1.setupKeys)("linux");
         await (0, gpg_1.verify)(signature, pkg);
     }
     const extracted = await (0, tool_cache_1.extractTar)(pkg);

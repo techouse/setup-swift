@@ -75,6 +75,8 @@ steps:
 
 ### Skip GPG signature verification
 
+On Linux, the action imports Swift's signing keys and refreshes them from `keyserver.ubuntu.com` before verifying the Swiftly download.
+
 If you are running on a runner that is not able to verify the GPG signature of the Swiftly package, you can skip the verification by setting the `skip-verify-signature` input to `true`.
 
 ```yaml
