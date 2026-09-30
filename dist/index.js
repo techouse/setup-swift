@@ -48,21 +48,33 @@ async function cmd(command, ...args) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.equalVersions = equalVersions;
+exports.matchesVersion = matchesVersion;
 const semver_1 = __nccwpck_require__(2088);
 /**
- * Compare two version strings.
- * @param a First version
- * @param b Second version
- * @returns True if the versions are equal
+ * Match an installed release or canonical Swiftly snapshot against a selector.
  */
-function equalVersions(a, b) {
-    if (!a || !b) {
+function matchesVersion(requested, installed) {
+    if (!requested || !installed) {
         return false;
     }
-    const versionA = (0, semver_1.coerce)(a);
-    const versionB = (0, semver_1.coerce)(b);
-    return Boolean(versionA && versionB && (0, semver_1.eq)(versionA, versionB));
+    const snapshot = requested.match(/^(main|\d+\.\d+(?:\.\d+)?)-snapshot(?:-(\d{4}-\d{2}-\d{2}))?$/);
+    if (snapshot) {
+        const actual = installed.match(/^(main|\d+\.\d+(?:\.\d+)?)-snapshot-(\d{4}-\d{2}-\d{2})$/);
+        return Boolean(actual &&
+            snapshot[1] === actual[1] &&
+            (!snapshot[2] || snapshot[2] === actual[2]));
+    }
+    if (!/^\d+\.\d+(?:\.\d+)?$/.test(installed)) {
+        return false;
+    }
+    if (requested === "latest") {
+        return true;
+    }
+    if (!/^\d+(?:\.\d+){0,2}$/.test(requested)) {
+        return false;
+    }
+    const actual = (0, semver_1.coerce)(installed);
+    return Boolean(actual && (0, semver_1.satisfies)(actual, requested));
 }
 
 
@@ -262,7 +274,7 @@ async function currentVersion() {
     return versionFromString(output);
 }
 function versionFromString(subject) {
-    const match = subject.match(/Swift\ version (?<version>[0-9]+\.[0-9+]+(\.[0-9]+)?)/) || {
+    const match = subject.match(/Swift\ version (?<version>[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-dev)?)/) || {
         groups: { version: null },
     };
     if (!match.groups || !match.groups.version) {
@@ -489,6 +501,11 @@ async function installSwift(version) {
     const location = await swiftly("use", "--print-location");
     (0, core_1.debug)(`Swiftly installed Swift to ${location}`);
     (0, core_1.addPath)(location);
+    const selected = JSON.parse(await swiftly("use", "--format", "json"));
+    if (typeof selected.version !== "string") {
+        throw new Error("Swiftly did not report a selected toolchain version.");
+    }
+    return selected.version;
 }
 
 
@@ -15709,20 +15726,21 @@ async function run() {
         const os = await (0, core_1.getOS)();
         // First check if the requested version is already installed
         let current = await (0, swift_1.currentVersion)().catch(() => null);
-        if ((0, core_1.equalVersions)(version, current)) {
-            (0, core_2.info)(`Swift ${version} is already installed`);
-            (0, core_2.setOutput)("version", version);
+        if (version !== "latest" && current && (0, core_1.matchesVersion)(version, current)) {
+            (0, core_2.info)(`Swift ${current} is already installed`);
+            (0, core_2.setOutput)("version", current);
             return;
         }
         // Setup Swiftly on the runner
+        let installedVersion;
         switch (os) {
             case "darwin":
                 await (0, swiftly_1.setupMacOS)();
-                await (0, swiftly_1.installSwift)(version);
+                installedVersion = await (0, swiftly_1.installSwift)(version);
                 break;
             case "linux":
                 await (0, swiftly_1.setupLinux)({ skipVerifySignature });
-                await (0, swiftly_1.installSwift)(version);
+                installedVersion = await (0, swiftly_1.installSwift)(version);
                 break;
             case "win32":
                 await (0, windows_1.setupWindows)(version);
@@ -15730,11 +15748,22 @@ async function run() {
         }
         // Verify the requested version is now installed
         current = await (0, swift_1.currentVersion)();
-        if ((0, core_1.equalVersions)(version, current)) {
-            (0, core_2.setOutput)("version", version);
+        const resolvedVersion = installedVersion ?? current;
+        const isSnapshot = resolvedVersion?.includes("-snapshot-") ?? false;
+        const snapshotBranch = resolvedVersion && isSnapshot
+            ? resolvedVersion.slice(0, resolvedVersion.indexOf("-snapshot-"))
+            : undefined;
+        if (current &&
+            (0, core_1.matchesVersion)(version, resolvedVersion) &&
+            (isSnapshot
+                ? current.endsWith("-dev") &&
+                    (snapshotBranch === "main" ||
+                        (0, core_1.matchesVersion)(snapshotBranch, current.slice(0, -4)))
+                : (0, core_1.matchesVersion)(resolvedVersion, current))) {
+            (0, core_2.setOutput)("version", isSnapshot ? resolvedVersion : current);
         }
         else {
-            (0, core_2.error)(`Failed to setup requested Swift version. requested: ${version}, actual: ${current}`);
+            (0, core_2.setFailed)(`Failed to setup requested Swift version. requested: ${version}, actual: ${current}`);
         }
     }
     catch (error) {
