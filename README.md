@@ -115,6 +115,17 @@ We recommend using the specific version tag together with [Dependabot](https://d
 
 If you don't plan on keeping tabs on updates or don't want to use Dependabot but still would like to always use the latest version, you can use the main version tag.
 
+## Development
+
+Use Node.js 24 (see `.nvmrc`) and npm 10 or later. Install dependencies with `npm ci` to use the committed `package-lock.json`, matching CI and release builds.
+
+```sh
+npm ci
+npm run build
+npm test
+npm run format-check
+```
+
 ## Legal
 
 Uses MIT license.
