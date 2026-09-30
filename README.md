@@ -20,6 +20,8 @@
 > [!IMPORTANT]
 > Version 3 is currently in beta. Please report any issues you encounter. To use legacy version 2, use `@v2`.
 
+This action runs on Node.js 24. Self-hosted runners require [GitHub Actions runner v2.327.1](https://github.com/actions/runner/releases/tag/v2.327.1) or later.
+
 ## Usage
 
 To run the action with the latest swift version available, simply add the action as a step in your workflow:
